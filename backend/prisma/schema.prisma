@@ -1,0 +1,97 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum ConnectivityStatus {
+  ONLINE
+  OFFLINE
+}
+
+enum SeverityLevel {
+  NORMAL
+  WARNING
+  HIGH_RISK
+  CRITICAL
+}
+
+enum IncidentStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model Worker {
+  workerId          String           @id @map("worker_id")
+  name              String
+  assignedZone      String           @map("assigned_zone")
+  assignedHelmetId  String?          @unique @map("assigned_helmet_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  helmet            Helmet?          @relation(fields: [assignedHelmetId], references: [helmetId])
+  readings          SensorReading[]
+  incidents         Incident[]
+
+  @@map("workers")
+}
+
+model Helmet {
+  helmetId           String             @id @map("helmet_id")
+  connectivityStatus ConnectivityStatus @default(OFFLINE) @map("connectivity_status")
+  lastSeen           DateTime           @default(now()) @map("last_seen")
+  assignedWorkerId   String?            @unique @map("assigned_worker_id")
+
+  worker             Worker?
+  readings           SensorReading[]
+  incidents          Incident[]
+
+  @@map("helmets")
+}
+
+model SensorReading {
+  readingId          Int       @id @default(autoincrement()) @map("reading_id")
+  helmetId           String    @map("helmet_id")
+  workerId           String    @map("worker_id")
+  heartRate          Float?    @map("heart_rate")
+  spo2               Float?    @map("spo2")
+  gasRaw             Int?      @map("gas_raw")
+  temperature        Float?    @map("temperature")
+  humidity           Float?    @map("humidity")
+  fallDetected       Boolean   @default(false) @map("fall_detected")
+  inactivityDetected Boolean   @default(false) @map("inactivity_detected")
+  timestamp          DateTime  @default(now()) @map("timestamp")
+
+  helmet             Helmet    @relation(fields: [helmetId], references: [helmetId])
+  worker             Worker    @relation(fields: [workerId], references: [workerId])
+
+  @@index([workerId, timestamp])
+  @@index([helmetId, timestamp])
+  @@map("sensor_readings")
+}
+
+model Incident {
+  incidentId     String         @id @default(uuid()) @map("incident_id")
+  workerId       String         @map("worker_id")
+  helmetId       String         @map("helmet_id")
+  incidentType   String         @map("incident_type")
+  severity       SeverityLevel  @default(WARNING) @map("severity")
+  description    String         @map("description")
+  detectedAt     DateTime       @default(now()) @map("detected_at")
+  acknowledgedAt DateTime?      @map("acknowledged_at")
+  acknowledgedBy String?        @map("acknowledged_by")
+  resolvedAt     DateTime?      @map("resolved_at")
+  status         IncidentStatus @default(ACTIVE) @map("status")
+
+  worker         Worker         @relation(fields: [workerId], references: [workerId])
+  helmet         Helmet         @relation(fields: [helmetId], references: [helmetId])
+
+  @@index([status])
+  @@index([severity])
+  @@index([workerId])
+  @@index([detectedAt])
+  @@map("incidents")
+}
