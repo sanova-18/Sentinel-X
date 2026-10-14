@@ -1,3 +1,4 @@
+
 # SentinelX — Intelligent IoT Safety & Emergency Response System for Industrial Workers
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -236,3 +237,6 @@ sentinelx/
 - **LoRa Fallback:** For deep underground tunnels where WiFi is unavailable, integrate SX1278 LoRa transceivers with gateway forwarding to the MQTT broker.
 - **Multi-Worker Hazard Correlation:** Correlate proximity data to flag area-wide gas releases or structural collapses.
 # SentinelX
+=======
+# Sentinel-X
+>>>>>>> b90df8924e4af841f495233353b9951ee5e95c19
