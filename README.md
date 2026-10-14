@@ -235,3 +235,4 @@ sentinelx/
 - **ESP32 Firmware Flash:** Map GPIO pins for MAX30102 (I2C `SDA/SCL`), MPU6050 (I2C), MQ-5 (ADC pin 34), DHT11 (GPIO 4), and SOS push button (GPIO 15).
 - **LoRa Fallback:** For deep underground tunnels where WiFi is unavailable, integrate SX1278 LoRa transceivers with gateway forwarding to the MQTT broker.
 - **Multi-Worker Hazard Correlation:** Correlate proximity data to flag area-wide gas releases or structural collapses.
+# SentinelX
