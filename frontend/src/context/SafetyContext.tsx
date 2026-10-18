@@ -43,6 +43,7 @@ export const SafetyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     function onConnect() {
       setIsConnected(true);
+      refreshData();
     }
 
     function onDisconnect() {
@@ -74,6 +75,7 @@ export const SafetyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 fallDetected: event.motion?.fallDetected ?? false,
                 inactivityDetected: event.motion?.inactivityDetected ?? false,
                 timestamp: event.timestamp,
+                isSimulated: event.isSimulated ?? null,
               },
             };
           }

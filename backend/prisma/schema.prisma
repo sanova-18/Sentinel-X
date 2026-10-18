@@ -64,6 +64,7 @@ model SensorReading {
   fallDetected       Boolean   @default(false) @map("fall_detected")
   inactivityDetected Boolean   @default(false) @map("inactivity_detected")
   timestamp          DateTime  @default(now()) @map("timestamp")
+  isSimulated        Boolean?  @map("is_simulated")
 
   helmet             Helmet    @relation(fields: [helmetId], references: [helmetId])
   worker             Worker    @relation(fields: [workerId], references: [workerId])
@@ -85,13 +86,31 @@ model Incident {
   acknowledgedBy String?        @map("acknowledged_by")
   resolvedAt     DateTime?      @map("resolved_at")
   status         IncidentStatus @default(ACTIVE) @map("status")
+  isSimulated    Boolean?       @map("is_simulated")
 
   worker         Worker         @relation(fields: [workerId], references: [workerId])
   helmet         Helmet         @relation(fields: [helmetId], references: [helmetId])
+  alertReceipts  AlertReceipt[]
 
   @@index([status])
   @@index([severity])
   @@index([workerId])
   @@index([detectedAt])
   @@map("incidents")
+}
+
+// An application acknowledgement is sent only once this receipt commits with its incident.
+model AlertReceipt {
+  helmetId     String    @map("helmet_id")
+  eventId      String    @map("event_id")
+  workerId     String    @map("worker_id")
+  isSimulated  Boolean?  @map("is_simulated")
+  incidentId   String    @map("incident_id")
+  receivedAt   DateTime  @default(now()) @map("received_at")
+
+  incident     Incident @relation(fields: [incidentId], references: [incidentId], onDelete: Cascade)
+
+  @@id([helmetId, eventId])
+  @@index([incidentId])
+  @@map("alert_receipts")
 }

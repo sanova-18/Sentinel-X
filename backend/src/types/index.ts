@@ -18,12 +18,16 @@ export enum IncidentStatus {
   RESOLVED = 'RESOLVED',
 }
 
+const TimestampSchema = z.string().or(z.date())
+  .transform((value) => new Date(value))
+  .refine((value) => Number.isFinite(value.getTime()), { message: 'Invalid timestamp' });
+
 // Zod Schema for Telemetry Payload
 export const TelemetryPayloadSchema = z.object({
   messageId: z.string().optional(),
   helmetId: z.string(),
   workerId: z.string(),
-  timestamp: z.string().or(z.date()).transform((val) => new Date(val)),
+  timestamp: TimestampSchema,
   vitals: z.object({
     heartRate: z.number().nullable().optional(),
     spo2: z.number().nullable().optional(),
@@ -37,22 +41,24 @@ export const TelemetryPayloadSchema = z.object({
     fallDetected: z.boolean().default(false),
     inactivityDetected: z.boolean().default(false),
   }).optional(),
-  isSimulated: z.boolean().default(true),
+  // Missing provenance is unknown; never relabel legacy or third-party data.
+  isSimulated: z.boolean().nullable().default(null),
 });
 
 export type TelemetryPayload = z.infer<typeof TelemetryPayloadSchema>;
 
 // Zod Schema for Immediate Alert Payload
 export const AlertPayloadSchema = z.object({
-  eventId: z.string(),
+  eventId: z.string().min(1).max(128),
   helmetId: z.string(),
   workerId: z.string(),
-  timestamp: z.string().or(z.date()).transform((val) => new Date(val)),
+  timestamp: TimestampSchema,
   alertType: z.string(),
   severity: z.nativeEnum(SeverityLevel),
   description: z.string(),
   sensorData: z.record(z.any()).optional(),
-  isSimulated: z.boolean().default(true),
+  // Missing provenance is unknown; never relabel legacy or third-party data.
+  isSimulated: z.boolean().nullable().default(null),
 });
 
 export type AlertPayload = z.infer<typeof AlertPayloadSchema>;

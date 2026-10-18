@@ -2,12 +2,22 @@ import { prisma } from '../config/db.js';
 import {
   TelemetryPayloadSchema,
   AlertPayloadSchema,
-  SeverityLevel,
 } from '../types/index.js';
 import { RuleEngineService } from '../services/rule-engine.service.js';
 import { IncidentService } from '../services/incident.service.js';
 import { HeartbeatService } from '../services/heartbeat.service.js';
 import { emitTelemetry } from '../socket/io.js';
+import { publishAlertAcknowledgement } from './client.js';
+
+async function hasAssignedHelmet(workerId: string, helmetId: string): Promise<boolean> {
+  const worker = await prisma.worker.findUnique({
+    where: { workerId },
+    select: { assignedHelmetId: true },
+  });
+  if (worker?.assignedHelmetId === helmetId) return true;
+  console.warn(`[MQTT] Rejected unassigned worker/helmet pair: ${workerId}/${helmetId}`);
+  return false;
+}
 
 export async function handleTelemetryMessage(topic: string, messageBuffer: Buffer) {
   try {
@@ -20,6 +30,11 @@ export async function handleTelemetryMessage(topic: string, messageBuffer: Buffe
     }
 
     const payload = parseResult.data;
+    if (topic !== `sentinelx/${payload.helmetId}/telemetry`) {
+      console.warn(`[MQTT] Telemetry topic does not match payload helmet: ${topic}`);
+      return;
+    }
+    if (!await hasAssignedHelmet(payload.workerId, payload.helmetId)) return;
 
     // 1. Update heartbeat
     await HeartbeatService.recordPing(payload.helmetId, payload.timestamp);
@@ -37,6 +52,7 @@ export async function handleTelemetryMessage(topic: string, messageBuffer: Buffe
         fallDetected: payload.motion?.fallDetected ?? false,
         inactivityDetected: payload.motion?.inactivityDetected ?? false,
         timestamp: payload.timestamp,
+        isSimulated: payload.isSimulated,
       },
       include: {
         worker: true,
@@ -55,6 +71,7 @@ export async function handleTelemetryMessage(topic: string, messageBuffer: Buffe
         severity: alert.severity,
         description: alert.description,
         detectedAt: payload.timestamp,
+        isSimulated: payload.isSimulated,
       });
     }
 
@@ -82,6 +99,11 @@ export async function handleAlertMessage(topic: string, messageBuffer: Buffer) {
     }
 
     const payload = parseResult.data;
+    if (topic !== `sentinelx/${payload.helmetId}/alert`) {
+      console.warn(`[MQTT] Alert topic does not match payload helmet: ${topic}`);
+      return;
+    }
+    if (!await hasAssignedHelmet(payload.workerId, payload.helmetId)) return;
 
     // 1. Update heartbeat
     await HeartbeatService.recordPing(payload.helmetId, payload.timestamp);
@@ -94,6 +116,14 @@ export async function handleAlertMessage(topic: string, messageBuffer: Buffer) {
       severity: payload.severity,
       description: payload.description,
       detectedAt: payload.timestamp,
+      eventId: payload.eventId,
+      isSimulated: payload.isSimulated,
+    });
+
+    // Failure to ACK leaves the device outbox intact; replay finds the DB receipt.
+    await publishAlertAcknowledgement({
+      helmetId: payload.helmetId,
+      workerId: payload.workerId,
       eventId: payload.eventId,
     });
   } catch (err) {

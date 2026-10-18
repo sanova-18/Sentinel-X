@@ -50,3 +50,18 @@ export function initMqttClient(): MqttClient {
 export function getMqttClient(): MqttClient | null {
   return client;
 }
+
+/** Acknowledges database persistence, never merely MQTT receipt. */
+export async function publishAlertAcknowledgement(payload: {
+  helmetId: string;
+  workerId: string;
+  eventId: string;
+}): Promise<void> {
+  const connectedClient = client;
+  if (!connectedClient?.connected) throw new Error('MQTT unavailable for persisted alert acknowledgement');
+  const acknowledgement = { ...payload, status: 'persisted' };
+  await new Promise<void>((resolve, reject) => {
+    connectedClient.publish(`sentinelx/${payload.helmetId}/ack`, JSON.stringify(acknowledgement),
+      { qos: 1, retain: false }, (err) => err ? reject(err) : resolve());
+  });
+}

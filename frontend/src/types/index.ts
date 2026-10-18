@@ -14,6 +14,7 @@ export interface SensorReading {
   fallDetected: boolean;
   inactivityDetected: boolean;
   timestamp: string;
+  isSimulated?: boolean | null;
 }
 
 export interface Worker {
@@ -41,6 +42,7 @@ export interface Incident {
   acknowledgedBy: string | null;
   resolvedAt: string | null;
   status: IncidentStatus;
+  isSimulated?: boolean | null;
   worker?: {
     name: string;
     assignedZone: string;
@@ -69,5 +71,5 @@ export interface LiveTelemetryEvent {
     inactivityDetected: boolean;
   };
   riskLevel: SeverityLevel;
-  isSimulated: boolean;
+  isSimulated?: boolean | null;
 }

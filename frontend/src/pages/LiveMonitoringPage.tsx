@@ -2,6 +2,7 @@ import React from 'react';
 import { Heart, Activity, Wind, Thermometer, Droplets, Radio, Clock } from 'lucide-react';
 import { useSafety } from '../context/SafetyContext';
 import { SeverityBadge } from '../components/common/SeverityBadge';
+import { SourceBadge } from '../components/common/SourceBadge';
 
 interface Props {
   onSelectWorker: (workerId: string) => void;
@@ -20,11 +21,11 @@ export const LiveMonitoringPage: React.FC<Props> = ({ onSelectWorker }) => {
             <span>Real-Time Wearable Telemetry Matrix</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Continuous sensor stream from simulated ESP32 smart helmets over MQTT &amp; Socket.IO
+            Latest helmet readings with their recorded source. Offline helmets retain their last reading.
           </p>
         </div>
         <div className="text-xs font-mono bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-slate-300">
-          Sync Interval: ~2.5s QoS 0/1
+          Live telemetry
         </div>
       </div>
 
@@ -55,6 +56,9 @@ export const LiveMonitoringPage: React.FC<Props> = ({ onSelectWorker }) => {
                     </span>
                   </div>
                   <div className="text-xs text-slate-400 font-mono mt-0.5">{worker.assignedZone}</div>
+                  <div className="mt-1">
+                    {r ? <SourceBadge isSimulated={r.isSimulated} /> : <span className="text-xs text-slate-500">No reading</span>}
+                  </div>
                 </div>
 
                 <div className="flex flex-col items-end space-y-1">

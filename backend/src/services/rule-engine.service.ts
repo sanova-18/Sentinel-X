@@ -28,7 +28,7 @@ export class RuleEngineService {
       });
     }
 
-    // 3. Environmental: Toxic Gas Raw Value (MQ-5)
+    // 3. Environmental: Uncalibrated MQ-5 raw value
     if (payload.environment?.gasRaw !== undefined && payload.environment?.gasRaw !== null) {
       const gas = payload.environment.gasRaw;
       if (gas >= t.gasRaw.criticalThreshold) {
@@ -41,7 +41,7 @@ export class RuleEngineService {
         alerts.push({
           incidentType: 'GAS_LEAK_WARNING',
           severity: SeverityLevel.HIGH_RISK,
-          description: `Elevated gas concentration detected: raw sensor reading ${gas} exceeds threshold (${t.gasRaw.warningThreshold})`,
+          description: `MQ-5 demonstration threshold exceeded: raw sensor reading ${gas} exceeds threshold (${t.gasRaw.warningThreshold})`,
         });
       }
     }
@@ -53,13 +53,13 @@ export class RuleEngineService {
         alerts.push({
           incidentType: 'HYPOXIA_CRITICAL',
           severity: SeverityLevel.CRITICAL,
-          description: `Severe hypoxemia detected: blood oxygen level at ${spo2}% (threshold <= ${t.spo2.criticalMin}%)`,
+          description: `Unvalidated SpO2 estimate at ${spo2}% (threshold <= ${t.spo2.criticalMin}%)`,
         });
       } else if (spo2 <= t.spo2.warningMin) {
         alerts.push({
           incidentType: 'HYPOXIA_WARNING',
           severity: SeverityLevel.WARNING,
-          description: `Mild hypoxemia warning: blood oxygen level at ${spo2}% (threshold <= ${t.spo2.warningMin}%)`,
+          description: `Unvalidated SpO2 estimate at ${spo2}% (threshold <= ${t.spo2.warningMin}%)`,
         });
       }
     }
@@ -71,7 +71,7 @@ export class RuleEngineService {
         alerts.push({
           incidentType: 'TACHYCARDIA_CRITICAL',
           severity: SeverityLevel.CRITICAL,
-          description: `Extreme tachycardia: heart rate ${hr} bpm exceeds critical limit (${t.heartRate.criticalMax} bpm)`,
+          description: `Prototype high pulse threshold exceeded: estimated heart rate ${hr} bpm exceeds critical limit (${t.heartRate.criticalMax} bpm)`,
         });
       } else if (hr >= t.heartRate.maxNormal) {
         alerts.push({
@@ -83,7 +83,7 @@ export class RuleEngineService {
         alerts.push({
           incidentType: 'BRADYCARDIA_WARNING',
           severity: SeverityLevel.WARNING,
-          description: `Low heart rate warning: ${hr} bpm is below safe threshold (${t.heartRate.minNormal} bpm)`,
+          description: `Low heart rate warning: ${hr} bpm is below demonstration threshold (${t.heartRate.minNormal} bpm)`,
         });
       }
     }

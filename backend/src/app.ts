@@ -34,9 +34,10 @@ server.listen(config.port, () => {
 ==========================================================
  🚀 REST API & Socket.IO: http://localhost:${config.port}
  📡 MQTT Broker:          ${config.mqtt.brokerUrl}
- 🗄️ Database:             ${config.databaseUrl}
+ 🗄️ Database:             ${config.databaseUrl ? "configured (credentials hidden)" : "not configured"}
  ⏱️ Heartbeat Watchdog:   Timeout = ${config.heartbeatTimeoutMs}ms
- ⚠️ SIMULATION MODE:      ACTIVE (Educational Prototype)
+ ⚠️ DEPLOYMENT:           Educational Prototype
+ 📋 DATA SOURCE:          Per message (hardware / simulated / unknown)
 ==========================================================
   `);
 });

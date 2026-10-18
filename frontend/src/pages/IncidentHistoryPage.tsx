@@ -3,6 +3,7 @@ import { History, RefreshCw, Download, Search } from 'lucide-react';
 import { fetchAllIncidents } from '../services/api';
 import { Incident } from '../types';
 import { SeverityBadge } from '../components/common/SeverityBadge';
+import { SourceBadge, sourceLabel } from '../components/common/SourceBadge';
 
 export const IncidentHistoryPage: React.FC = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -39,12 +40,13 @@ export const IncidentHistoryPage: React.FC = () => {
   );
 
   const exportCSV = () => {
-    const headers = ['IncidentID', 'WorkerID', 'HelmetID', 'Type', 'Severity', 'Status', 'DetectedAt', 'AcknowledgedBy', 'ResolvedAt'];
+    const headers = ['IncidentID', 'WorkerID', 'HelmetID', 'Type', 'Source', 'Severity', 'Status', 'DetectedAt', 'AcknowledgedBy', 'ResolvedAt'];
     const rows = filtered.map(i => [
       i.incidentId,
       i.workerId,
       i.helmetId,
       i.incidentType,
+      sourceLabel(i.isSimulated),
       i.severity,
       i.status,
       i.detectedAt,
@@ -71,7 +73,7 @@ export const IncidentHistoryPage: React.FC = () => {
             <span>Industrial Incident &amp; Audit Trail</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Complete historical audit records persisted in PostgreSQL database.
+            Stored incident records. Older records without source information are marked unknown.
           </p>
         </div>
 
@@ -162,6 +164,7 @@ export const IncidentHistoryPage: React.FC = () => {
               <tr>
                 <th className="py-3 px-4">Severity</th>
                 <th className="py-3 px-4">Incident Type</th>
+                <th className="py-3 px-4">Source</th>
                 <th className="py-3 px-4">Worker / Helmet</th>
                 <th className="py-3 px-4">Description</th>
                 <th className="py-3 px-4">Detected</th>
@@ -172,7 +175,7 @@ export const IncidentHistoryPage: React.FC = () => {
             <tbody className="divide-y divide-slate-800/80 text-slate-300">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-500">
+                  <td colSpan={8} className="py-8 text-center text-slate-500">
                     No incident records match the selected criteria.
                   </td>
                 </tr>
@@ -185,6 +188,7 @@ export const IncidentHistoryPage: React.FC = () => {
                     <td className="py-3 px-4 font-bold text-slate-100">
                       {item.incidentType}
                     </td>
+                    <td className="py-3 px-4"><SourceBadge isSimulated={item.isSimulated} /></td>
                     <td className="py-3 px-4 text-teal-400">
                       {item.workerId} <span className="text-slate-500">({item.helmetId})</span>
                     </td>

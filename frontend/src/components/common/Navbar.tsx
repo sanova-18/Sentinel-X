@@ -49,10 +49,10 @@ export const Navbar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
             </div>
           </div>
 
-          {/* Center: Prominent Simulation Mode Badge */}
+          {/* Prototype notice; individual records identify their data source. */}
           <div className="hidden md:flex items-center space-x-2 bg-amber-950/40 border border-amber-600/50 px-3 py-1.5 rounded-full text-xs font-mono text-amber-300">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="font-semibold tracking-wide">SIMULATION MODE: SYNTHETIC DATA</span>
+            <span className="font-semibold tracking-wide">EDUCATIONAL PROTOTYPE</span>
           </div>
 
           {/* Right Status Badges */}
@@ -65,7 +65,7 @@ export const Navbar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
                 }`}
               />
               <span className={isConnected ? 'text-slate-300' : 'text-red-400'}>
-                {isConnected ? 'LIVE BROKER' : 'DISCONNECTED'}
+                {isConnected ? 'BACKEND CONNECTED' : 'DISCONNECTED'}
               </span>
             </div>
 

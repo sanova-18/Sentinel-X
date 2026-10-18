@@ -8,6 +8,8 @@ import sys
 import time
 import json
 import threading
+import argparse
+import os
 import paho.mqtt.client as mqtt
 
 from config import (
@@ -23,6 +25,15 @@ import scenarios
 workers = [WorkerSimulator(w_cfg) for w_cfg in SIMULATED_WORKERS]
 stop_event = threading.Event()
 client = None
+
+def simulation_workers(excluded_helmets):
+    """Remove hardware-owned helmets from every simulator scenario for this run."""
+    excluded = set(excluded_helmets)
+    known = {item["helmet_id"] for item in SIMULATED_WORKERS}
+    unknown = excluded - known
+    if unknown:
+        raise ValueError("Unknown helmet ID(s): " + ", ".join(sorted(unknown)))
+    return [WorkerSimulator(item) for item in SIMULATED_WORKERS if item["helmet_id"] not in excluded]
 
 def on_connect(c, userdata, flags, rc, properties=None):
     if rc == 0:
@@ -77,14 +88,30 @@ Interactive Scenarios:
 
 def select_worker():
     print_worker_status()
-    choice = input("Select Worker [1-3] (default 1): ").strip()
-    if choice in ["1", "2", "3"]:
+    choice = input(f"Select Worker [1-{len(workers)}] (default 1): ").strip()
+    if choice.isdigit() and 1 <= int(choice) <= len(workers):
         return workers[int(choice) - 1]
     return workers[0]
 
 def main():
-    global client
+    global client, workers
+    parser = argparse.ArgumentParser(description="SentinelX synthetic sensor simulator")
+    parser.add_argument("--exclude-helmet", action="append", default=[], metavar="HELMET_ID",
+                        help="Reserve this helmet for physical hardware; repeat for multiple helmets")
+    args = parser.parse_args()
+    excluded = set(args.exclude_helmet) | {
+        value.strip() for value in os.getenv("SENTINELX_HARDWARE_HELMETS", "").split(",") if value.strip()
+    }
+    try:
+        workers = simulation_workers(excluded)
+    except ValueError as error:
+        parser.error(str(error))
     print_banner()
+    if excluded:
+        print("Reserved for physical hardware: " + ", ".join(sorted(excluded)))
+    if not workers:
+        print("All helmets are reserved for hardware. No simulator messages will be sent.")
+        return
 
     # Setup MQTT
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="sentinelx_simulator_master")

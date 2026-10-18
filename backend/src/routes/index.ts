@@ -12,8 +12,11 @@ apiRouter.use('/helmets', helmetRouter);
 apiRouter.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    system: 'SentinelX Industrial Safety Core',
+    system: 'SentinelX Safety Monitoring Prototype',
+    deploymentMode: 'educational-prototype',
+    dataSourceMode: 'per-message',
     timestamp: new Date().toISOString(),
-    isSimulatedMode: true,
+    // Kept for older clients; source belongs to each reading/incident, not the server.
+    isSimulatedMode: null,
   });
 });

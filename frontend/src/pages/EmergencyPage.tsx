@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShieldAlert, CheckCircle, Check, User, Clock, AlertTriangle } from 'lucide-react';
 import { useSafety } from '../context/SafetyContext';
 import { SeverityBadge } from '../components/common/SeverityBadge';
+import { SourceBadge } from '../components/common/SourceBadge';
 
 export const EmergencyPage: React.FC = () => {
   const { activeIncidents, acknowledge, resolve } = useSafety();
@@ -88,6 +89,7 @@ export const EmergencyPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <SeverityBadge severity={incident.severity} size="md" />
+                      <SourceBadge isSimulated={incident.isSimulated} />
                       <span className="font-mono font-bold text-sm text-slate-100">
                         {incident.incidentType}
                       </span>

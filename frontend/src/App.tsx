@@ -54,10 +54,10 @@ const AppContent: React.FC = () => {
       <footer className="bg-[#070D18] border-t border-slate-900 py-4 text-xs font-mono text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            SentinelX Industrial Safety Prototype &bull; ESP32 Simulation Core &bull; Mosquitto MQTT &bull; PostgreSQL
+            SentinelX Industrial Safety Prototype &bull; Source shown on each reading and incident
           </div>
           <div className="text-amber-500/80">
-            [NOTICE: Sensor thresholds &amp; MQ-5 raw values are demonstration prototypes, not calibrated medical standards]
+            Educational prototype. Sensor readings and alerts require validation; no medical or mine-safety certification.
           </div>
         </div>
       </footer>

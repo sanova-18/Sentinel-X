@@ -10,75 +10,85 @@ interface CreateIncidentInput {
   description: string;
   detectedAt?: Date;
   eventId?: string;
+  isSimulated?: boolean | null;
 }
 
 export class IncidentService {
-  // Deduplication cache for MQTT event IDs (keeps IDs for 5 minutes)
-  private static processedEventIds = new Map<string, number>();
-
-  // Check if an eventId was recently processed
-  public static isDuplicateEvent(eventId?: string): boolean {
-    if (!eventId) return false;
-    this.cleanExpiredEventIds();
-    if (this.processedEventIds.has(eventId)) {
-      return true;
-    }
-    this.processedEventIds.set(eventId, Date.now() + 5 * 60 * 1000);
-    return false;
-  }
-
-  private static cleanExpiredEventIds() {
-    const now = Date.now();
-    for (const [id, expiry] of this.processedEventIds.entries()) {
-      if (now > expiry) {
-        this.processedEventIds.delete(id);
-      }
-    }
-  }
-
   /**
-   * Creates an incident if no ACTIVE incident of the same type already exists for this worker.
-   * This prevents telemetry ticks from spamming duplicate incident rows for the same ongoing condition.
+   * Commit a receipt and its incident together. Source-specific ongoing hazards are
+   * grouped, while each event ID is durable across retries and backend restarts.
+   * Serializable retries also prevent concurrent telemetry/alert processing from
+   * creating two active incidents for the same worker, helmet, type and source.
    */
   public static async createIncident(data: CreateIncidentInput) {
-    if (data.eventId && this.isDuplicateEvent(data.eventId)) {
-      console.log(`[IncidentService] Duplicate eventId skipped: ${data.eventId}`);
-      return null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          if (data.eventId) {
+            const receipt = await tx.alertReceipt.findUnique({
+              where: { helmetId_eventId: { helmetId: data.helmetId, eventId: data.eventId } },
+              include: { incident: { include: { worker: true, helmet: true } } },
+            });
+            if (receipt) {
+              if (receipt.workerId !== data.workerId ||
+                  receipt.isSimulated !== (data.isSimulated ?? null) ||
+                  receipt.incident.incidentType !== data.incidentType) {
+                throw new Error('Alert event ID was reused with a different identity, source or type');
+              }
+              return { incident: receipt.incident, created: false };
+            }
+          }
+
+          const where = {
+            workerId: data.workerId,
+            helmetId: data.helmetId,
+            isSimulated: data.isSimulated ?? null,
+            incidentType: data.incidentType,
+          };
+          const existingActive = await tx.incident.findFirst({
+            where: { ...where, status: { in: [IncidentStatus.ACTIVE, IncidentStatus.ACKNOWLEDGED] } },
+            include: { worker: true, helmet: true },
+          });
+          const incident = existingActive ?? await tx.incident.create({
+            data: {
+              ...where,
+              status: IncidentStatus.ACTIVE,
+              severity: data.severity,
+              description: data.description,
+              detectedAt: data.detectedAt || new Date(),
+            },
+            include: { worker: true, helmet: true },
+          });
+
+          if (data.eventId) {
+            await tx.alertReceipt.create({
+              data: {
+                helmetId: data.helmetId,
+                eventId: data.eventId,
+                workerId: data.workerId,
+                isSimulated: data.isSimulated ?? null,
+                incidentId: incident.incidentId,
+              },
+            });
+          }
+          return { incident, created: !existingActive };
+        }, { isolationLevel: 'Serializable' });
+
+        // Emit only after commit. A retry can safely ACK an existing DB receipt.
+        if (result.created) {
+          console.log(`🚨 [IncidentService] Created ${result.incident.severity} incident [${result.incident.incidentType}] for Worker ${result.incident.workerId}`);
+          emitIncident(result.incident);
+        }
+        return result.incident;
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        // P2034: serialization conflict; P2002: concurrent receipt key insertion.
+        // Re-read the durable receipt in a fresh transaction before accepting it.
+        if (attempt < 3 && (code === 'P2034' || (data.eventId && code === 'P2002'))) continue;
+        throw err;
+      }
     }
-
-    // Check if worker already has an ACTIVE incident of this specific type
-    const existingActive = await prisma.incident.findFirst({
-      where: {
-        workerId: data.workerId,
-        incidentType: data.incidentType,
-        status: IncidentStatus.ACTIVE,
-      },
-    });
-
-    if (existingActive) {
-      // Worker already has an active incident for this hazard; update last description or return existing
-      return existingActive;
-    }
-
-    const incident = await prisma.incident.create({
-      data: {
-        workerId: data.workerId,
-        helmetId: data.helmetId,
-        incidentType: data.incidentType,
-        severity: data.severity,
-        description: data.description,
-        detectedAt: data.detectedAt || new Date(),
-        status: IncidentStatus.ACTIVE,
-      },
-      include: {
-        worker: true,
-        helmet: true,
-      },
-    });
-
-    console.log(`🚨 [IncidentService] Created ${incident.severity} incident [${incident.incidentType}] for Worker ${incident.workerId}`);
-    emitIncident(incident);
-    return incident;
+    throw new Error('Incident transaction retry limit exceeded');
   }
 
   public static async getAllIncidents(filters: {

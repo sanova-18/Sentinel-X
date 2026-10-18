@@ -2,6 +2,7 @@ import React from 'react';
 import { Users, Radio, ShieldAlert, AlertTriangle, HardHat, Clock, ArrowRight } from 'lucide-react';
 import { useSafety } from '../context/SafetyContext';
 import { SeverityBadge } from '../components/common/SeverityBadge';
+import { SourceBadge } from '../components/common/SourceBadge';
 
 interface Props {
   onSelectWorker: (workerId: string) => void;
@@ -119,8 +120,9 @@ export const OverviewPage: React.FC<Props> = ({ onSelectWorker, onGoToEmergency 
                             {worker.helmetId}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-400 font-mono mt-0.5">
+                        <div className="text-xs text-slate-400 font-mono mt-0.5 flex flex-wrap items-center gap-2">
                           {worker.assignedZone}
+                          {r && <SourceBadge isSimulated={r.isSimulated} />}
                         </div>
                       </div>
                     </div>
@@ -202,6 +204,7 @@ export const OverviewPage: React.FC<Props> = ({ onSelectWorker, onGoToEmergency 
                     <span>{evt.workerName || evt.workerId}</span>
                     <SeverityBadge severity={evt.riskLevel} size="sm" />
                   </div>
+                  <SourceBadge isSimulated={evt.isSimulated} />
                   <div className="text-[11px] text-slate-400 flex space-x-3 pt-1 border-t border-slate-800">
                     <span>HR: {evt.vitals?.heartRate ?? '--'}</span>
                     <span>SpO2: {evt.vitals?.spo2 ?? '--'}%</span>

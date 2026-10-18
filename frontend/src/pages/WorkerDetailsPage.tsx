@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -13,6 +13,7 @@ import { useSafety } from '../context/SafetyContext';
 import { fetchWorkerHistory } from '../services/api';
 import { SensorReading } from '../types';
 import { SeverityBadge } from '../components/common/SeverityBadge';
+import { SourceBadge, sourceLabel } from '../components/common/SourceBadge';
 
 interface Props {
   selectedWorkerId: string;
@@ -23,18 +24,25 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
   const { workers, activeIncidents } = useSafety();
   const [history, setHistory] = useState<SensorReading[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [historyWorkerId, setHistoryWorkerId] = useState<string | null>(null);
+  const [selectedSource, setSelectedSource] = useState('all');
+  const historyRequest = useRef(0);
 
   const currentWorker = workers.find((w) => w.workerId === selectedWorkerId) || workers[0];
 
   const loadHistory = async (workerId: string) => {
+    const requestId = ++historyRequest.current;
     setLoading(true);
     try {
       const data = await fetchWorkerHistory(workerId, 40);
-      setHistory(data);
+      if (requestId === historyRequest.current) {
+        setHistory(data);
+        setHistoryWorkerId(workerId);
+      }
     } catch (err) {
       console.error('Failed to load history:', err);
     } finally {
-      setLoading(false);
+      if (requestId === historyRequest.current) setLoading(false);
     }
   };
 
@@ -42,15 +50,23 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
     if (currentWorker) {
       loadHistory(currentWorker.workerId);
     }
+    return () => { historyRequest.current += 1; };
   }, [currentWorker?.workerId]);
 
+  const currentHistory = historyWorkerId === currentWorker?.workerId ? history : [];
+  const filteredHistory = currentHistory.filter((item) => selectedSource === 'all'
+    || (selectedSource === 'hardware' && item.isSimulated === false)
+    || (selectedSource === 'simulated' && item.isSimulated === true)
+    || (selectedSource === 'unknown' && item.isSimulated == null));
+
   // Format chart data with short time labels
-  const chartData = history.map((item) => ({
+  const chartData = filteredHistory.map((item) => ({
     time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     heartRate: item.heartRate,
     spo2: item.spo2,
     gasRaw: item.gasRaw,
     temperature: item.temperature,
+    source: sourceLabel(item.isSimulated),
   }));
 
   const workerIncidents = activeIncidents.filter((i) => i.workerId === currentWorker?.workerId);
@@ -74,6 +90,12 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
             <p className="text-xs font-mono text-slate-400 mt-0.5">
               Zone: {currentWorker?.assignedZone} | Helmet: {currentWorker?.helmetId} | Status: {currentWorker?.connectivityStatus}
             </p>
+            <div className="mt-1 text-xs text-slate-400 flex items-center gap-2">
+              <span>Latest reading:</span>
+              {currentWorker?.latestReading
+                ? <SourceBadge isSimulated={currentWorker.latestReading.isSimulated} />
+                : <span>No reading</span>}
+            </div>
           </div>
         </div>
 
@@ -103,6 +125,29 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-slate-400">
+        <div>
+          History: {currentHistory.length} readings &bull;{' '}
+          {currentHistory.filter((item) => item.isSimulated === false).length} hardware &bull;{' '}
+          {currentHistory.filter((item) => item.isSimulated === true).length} simulated &bull;{' '}
+          {currentHistory.filter((item) => item.isSimulated == null).length} unknown
+        </div>
+        <label className="flex items-center gap-2">
+          Chart source:
+          <select
+            value={selectedSource}
+            onChange={(event) => setSelectedSource(event.target.value)}
+            className="bg-[#0B1120] border border-slate-800 rounded-lg px-2.5 py-2 text-slate-200 focus:outline-none focus:border-teal-500"
+          >
+            <option value="all">All sources</option>
+            <option value="hardware">Hardware</option>
+            <option value="simulated">Simulated</option>
+            <option value="unknown">Source unknown</option>
+          </select>
+        </label>
+        {!loading && filteredHistory.length === 0 && <p className="w-full">No readings for this source in the loaded history.</p>}
+      </div>
+
       {/* Sensor Graphs Grid (4 Recharts graphs) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Graph 1: Heart Rate */}
@@ -123,6 +168,7 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
                 <XAxis dataKey="time" stroke="#64748B" fontSize={10} tickLine={false} />
                 <YAxis domain={[40, 160]} stroke="#64748B" fontSize={10} tickLine={false} />
                 <Tooltip
+                  labelFormatter={(label, payload) => `${label} · ${payload[0]?.payload.source ?? 'Source unknown'}`}
                   contentStyle={{ backgroundColor: '#0B1120', borderColor: '#334155', borderRadius: '8px' }}
                   labelStyle={{ color: '#94A3B8' }}
                 />
@@ -157,6 +203,7 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
                 <XAxis dataKey="time" stroke="#64748B" fontSize={10} tickLine={false} />
                 <YAxis domain={[80, 100]} stroke="#64748B" fontSize={10} tickLine={false} />
                 <Tooltip
+                  labelFormatter={(label, payload) => `${label} · ${payload[0]?.payload.source ?? 'Source unknown'}`}
                   contentStyle={{ backgroundColor: '#0B1120', borderColor: '#334155', borderRadius: '8px' }}
                   labelStyle={{ color: '#94A3B8' }}
                 />
@@ -178,7 +225,7 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-mono font-bold text-slate-200 flex items-center space-x-2">
               <Wind className="w-4 h-4 text-amber-400" />
-              <span>GAS RAW CONCENTRATION (MQ-5 ADC)</span>
+              <span>GAS RAW READING (MQ-5 ADC)</span>
             </span>
             <span className="text-xs font-mono text-slate-400">
               Threshold: &gt;650 High, &gt;850 Critical
@@ -191,6 +238,7 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
                 <XAxis dataKey="time" stroke="#64748B" fontSize={10} tickLine={false} />
                 <YAxis domain={[100, 1024]} stroke="#64748B" fontSize={10} tickLine={false} />
                 <Tooltip
+                  labelFormatter={(label, payload) => `${label} · ${payload[0]?.payload.source ?? 'Source unknown'}`}
                   contentStyle={{ backgroundColor: '#0B1120', borderColor: '#334155', borderRadius: '8px' }}
                   labelStyle={{ color: '#94A3B8' }}
                 />
@@ -225,6 +273,7 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
                 <XAxis dataKey="time" stroke="#64748B" fontSize={10} tickLine={false} />
                 <YAxis domain={[15, 45]} stroke="#64748B" fontSize={10} tickLine={false} />
                 <Tooltip
+                  labelFormatter={(label, payload) => `${label} · ${payload[0]?.payload.source ?? 'Source unknown'}`}
                   contentStyle={{ backgroundColor: '#0B1120', borderColor: '#334155', borderRadius: '8px' }}
                   labelStyle={{ color: '#94A3B8' }}
                 />
@@ -251,7 +300,7 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
 
         {workerIncidents.length === 0 ? (
           <div className="text-xs font-mono text-slate-500 py-3">
-            No active emergencies logged for this worker. All telemetry within nominal ranges.
+            No active emergencies logged for this worker.
           </div>
         ) : (
           <div className="space-y-2">
@@ -263,6 +312,7 @@ export const WorkerDetailsPage: React.FC<Props> = ({ selectedWorkerId, onSelectW
                 <div>
                   <div className="flex items-center space-x-2">
                     <SeverityBadge severity={inc.severity} size="sm" />
+                    <SourceBadge isSimulated={inc.isSimulated} />
                     <span className="font-bold text-slate-200">{inc.incidentType}</span>
                     <span className="text-slate-500">[{inc.status}]</span>
                   </div>

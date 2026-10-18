@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertOctagon, ArrowRight } from 'lucide-react';
 import { useSafety } from '../../context/SafetyContext';
+import { SourceBadge } from '../common/SourceBadge';
 
 interface Props {
   onGoToEmergency: () => void;
@@ -28,6 +29,7 @@ export const EmergencyBanner: React.FC<Props> = ({ onGoToEmergency }) => {
             <span className="text-sm font-semibold text-white">
               {topIncident.incidentType.replace('_', ' ')}
             </span>
+            <span className="ml-2"><SourceBadge isSimulated={topIncident.isSimulated} /></span>
             <span className="text-sm text-red-300 ml-2 hidden sm:inline">
               Worker: <span className="font-mono text-white">{topIncident.workerId}</span> | {topIncident.description}
             </span>
