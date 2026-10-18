@@ -1,6 +1,7 @@
 import { Worker, Incident, SensorReading } from '../types';
 
-const API_BASE = 'http://localhost:5001/api';
+const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:5001';
+const API_BASE = `${BACKEND_URL}/api`;
 
 export async function fetchWorkers(): Promise<Worker[]> {
   const res = await fetch(`${API_BASE}/workers`);
